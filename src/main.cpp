@@ -15,6 +15,8 @@ using namespace std;
 // for convenience
 using json = nlohmann::json;
 
+const double REF_VEL = 49.5;
+
 // For converting back and forth between radians and degrees.
 constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
@@ -202,7 +204,7 @@ int main() {
   }
 
   int lane = 1; // eg 0-far left, 1-middle, 2-right lane
-  double ref_vel = 49.5; //mph
+  double ref_vel = 0; //mph
 
   h.onMessage([&ref_vel, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy, &lane]
     (uWS::WebSocket<uWS::SERVER> ws,
@@ -247,6 +249,45 @@ int main() {
 
             //NOTE: inserting code
             int path_size = previous_path_x.size();
+
+
+            // Avoid rear end collision with  car in front.
+            if (path_size > 0)
+            {
+              car_s = end_path_s;
+            }
+
+            bool too_close = false;
+            for(int i = 0; i < sensor_fusion.size(); i++)
+            {
+                //car is in same lane
+                float d = sensor_fusion[i][0];
+                if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2) )
+                {
+                  double vx = sensor_fusion[i][3];
+                  double vy = sensor_fusion[i][4];
+                  double check_speed = sqrt(vx * vx + vy *vy);
+                  double check_car_s = sensor_fusion[i][5];
+                  check_car_s += ((double)path_size * 0.02 * check_speed);
+
+                  // if car is infront of me, and within say 30m then reduce vel
+                  if ((check_car_s > car_s) && (check_car_s - car_s) < 30 )
+                  {
+                      // ref_vel = ref_vel/2.0;
+                      too_close = true;
+                  }
+
+                }
+            }
+            if(too_close)
+            {
+              ref_vel -= 0.224;
+            }
+            else if (ref_vel < REF_VEL)
+            {
+              ref_vel += 0.224;
+            }
+
 
             vector<double> ptsx;
             vector<double> ptsy;
@@ -347,7 +388,7 @@ int main() {
             double target_dist = sqrt(target_x * target_x + target_y * target_y);
             double x_add_on = 0;
 
-            for(int i=0; i <= 50 - previous_path_x.size(); i++)
+            for(int i=1; i <= 50 - previous_path_x.size(); i++)
             {
               double N = (target_dist /( 0.02 * ref_vel / 2.24));
               double x_pt = x_add_on + target_x/N;
