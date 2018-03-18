@@ -275,6 +275,8 @@ int main() {
                   {
                       // ref_vel = ref_vel/2.0;
                       too_close = true;
+
+
                   }
 
                 }
@@ -282,11 +284,21 @@ int main() {
             if(too_close)
             {
               ref_vel -= 0.224;
+              if (lane > 0)
+              {
+                lane -= 1;
+              }
+              else
+              {
+                lane += 1;
+              }
             }
             else if (ref_vel < REF_VEL)
             {
               ref_vel += 0.224;
             }
+
+
 
 
             vector<double> ptsx;
