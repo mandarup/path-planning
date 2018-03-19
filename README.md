@@ -24,9 +24,16 @@ The highway's waypoints loop around so the frenet s value, distance along the ro
 
 # Model
 
-## Trajectory generation
+## Trajectory generation - highlights
 
-This implementation makes use of spline (used as is from http://kluge.in-chemnitz.de/opensource/spline/, the spline function is in a single header file)
+1) If there is no existing path, then create path tangential to car.
+2) If path exists, then add points to current path (using path's end point as reference point)
+3) Convert way points to Frenet coordinates
+4) Add additional 3 points spaced 30m (30, 60, 90m in front of vehicle)
+5) Apply spline function to these points get smooth trajectory.
+
+
+This implementation makes use of spline (used as is from http://kluge.in-chemnitz.de/opensource/spline/, the spline function is in a single header file) for smooth rajectory generation.
 
 ## Acceleration, Deceleration, Jerk avoidance
 
