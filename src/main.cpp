@@ -16,6 +16,8 @@ using namespace std;
 using json = nlohmann::json;
 
 const double REF_VEL = 49.5;
+const int NUM_LANES = 3;
+// const int MIN_PROXIMITY = 5;
 
 // For converting back and forth between radians and degrees.
 constexpr double pi() { return M_PI; }
@@ -166,6 +168,40 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s, const vec
 
 }
 
+
+bool is_lane_occupied(double car_s, vector<vector<double>> sensor_fusion, int lane, int path_size)
+{
+
+  bool too_close = false;
+  for(int i = 0; i < sensor_fusion.size(); i++)
+  {
+      //car is in same lane
+      float d = sensor_fusion[i][6];
+      if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2) )
+      {
+        double vx = sensor_fusion[i][3];
+        double vy = sensor_fusion[i][4];
+        double check_speed = sqrt(vx * vx + vy *vy);
+        double check_car_s = sensor_fusion[i][5];
+        check_car_s += ((double)path_size * 0.02 * check_speed);
+
+        // if car is infront of me, and within say 30m then reduce vel
+        if ((check_car_s > car_s) && (check_car_s - car_s) < 30 )
+        {
+            // ref_vel = ref_vel/2.0;
+            too_close = true;
+        }
+        else if (abs(check_car_s - car_s) < 5 )
+        {
+            // ref_vel = ref_vel/2.0;
+            too_close = true;
+        }
+      }
+  }
+  return too_close;
+}
+
+
 int main() {
   uWS::Hub h;
 
@@ -258,10 +294,13 @@ int main() {
             }
 
             bool too_close = false;
+            // double cap_vel = ref_vel;
+            double vel_change = 0.224;
+
             for(int i = 0; i < sensor_fusion.size(); i++)
             {
                 //car is in same lane
-                float d = sensor_fusion[i][0];
+                float d = sensor_fusion[i][6];
                 if (d < (2 + 4 * lane + 2) && d > (2 + 4 * lane - 2) )
                 {
                   double vx = sensor_fusion[i][3];
@@ -275,7 +314,10 @@ int main() {
                   {
                       // ref_vel = ref_vel/2.0;
                       too_close = true;
-
+                      // cap_vel = check_speed;
+                      vel_change = (car_speed - check_speed) / (check_car_s - car_s);
+                      std::cout << "change in speed set to " << vel_change << std::endl;
+                      std::cout <<  "current lane: "<< lane << ", vehicle too close: "  << std::endl;
 
                   }
 
@@ -283,19 +325,37 @@ int main() {
             }
             if(too_close)
             {
-              ref_vel -= 0.224;
-              if (lane > 0)
+              // ref_vel -= 0.224
+              ref_vel -= vel_change;
+              // ref_vel = min(cap_vel, ref_vel)
+
+              for (int l = 0; l < NUM_LANES; l++)
               {
-                lane -= 1;
+                  if (not is_lane_occupied(car_s, sensor_fusion, l, path_size) && l != lane && abs(l - lane) == 1)
+                  {
+                    std::cout <<  "current lane: "<< lane << ", changing to lane: "<< l  << std::endl;
+                    lane = l;
+                    break;
+                  }
+                  else if (l != lane && abs(l - lane) == 1)
+                  {
+                    std::cout <<  "current lane: "<< lane << ", canNOT change to lane: "<< l  << std::endl;
+                  }
               }
-              else
-              {
-                lane += 1;
-              }
+              // if (lane > 0)
+              // {
+              //   lane -= 1;
+              // }
+              // else
+              // {
+              //   lane += 1;
+              // }
             }
             else if (ref_vel < REF_VEL)
             {
               ref_vel += 0.224;
+              // ref_vel = max(ref_vel + 0.224, ref_vel * .05);
+              std::cout <<  "increase speed to: " << ref_vel << std::endl;
             }
 
 
