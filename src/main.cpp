@@ -315,7 +315,7 @@ int main() {
                       // ref_vel = ref_vel/2.0;
                       too_close = true;
                       // cap_vel = check_speed;
-                      vel_change = (car_speed - check_speed) / (check_car_s - car_s);
+                      vel_change = (car_speed - check_speed) / (check_car_s - car_s + 0.02);
                       std::cout << "change in speed set to " << vel_change << std::endl;
                       std::cout <<  "current lane: "<< lane << ", vehicle too close: "  << std::endl;
 
@@ -325,9 +325,6 @@ int main() {
             }
             if(too_close)
             {
-              // ref_vel -= 0.224
-              ref_vel -= vel_change;
-              // ref_vel = min(cap_vel, ref_vel)
 
               for (int l = 0; l < NUM_LANES; l++)
               {
@@ -335,6 +332,7 @@ int main() {
                   {
                     std::cout <<  "current lane: "<< lane << ", changing to lane: "<< l  << std::endl;
                     lane = l;
+                    too_close = false;
                     break;
                   }
                   else if (l != lane && abs(l - lane) == 1)
@@ -342,14 +340,13 @@ int main() {
                     std::cout <<  "current lane: "<< lane << ", canNOT change to lane: "<< l  << std::endl;
                   }
               }
-              // if (lane > 0)
-              // {
-              //   lane -= 1;
-              // }
-              // else
-              // {
-              //   lane += 1;
-              // }
+              if(too_close)
+              {// ref_vel -= 0.224
+              ref_vel -= vel_change;
+              // ref_vel = min(cap_vel, ref_vel)
+              std::cout <<  "reduce speed: "<< ref_vel << std::endl;
+
+              }
             }
             else if (ref_vel < REF_VEL)
             {
